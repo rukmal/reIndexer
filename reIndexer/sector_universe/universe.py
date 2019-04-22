@@ -45,3 +45,49 @@ class Universe():
 
         logging.info('Successfully loaded {0} sector universe'
             .format(self.universe_name))
+
+    def getUniqueTickers(self) -> list:
+        """Function to get a list of unique tickers in the universe.
+        
+        Returns:
+            list -- List of unique tickers.
+        """
+
+        return self.tickers
+
+    def getUniverseName(self) -> str:
+        """Function to get the sector universe name.
+        
+        Returns:
+            str -- Sector universe name.
+        """
+
+        return self.universe_name
+
+    def getTickersInSector(self, sector_label: str) -> list:
+        """Function to get the component tickers for a given sector.
+        
+        Arguments:
+            sector_label {str} -- Sector label.
+        
+        Returns:
+            list -- List of component tickers.
+
+        Raises:
+            KeyError -- Raised when an invalid sector label is provided.
+        """
+
+        try:
+            return self.sectors[sector_label]
+        except KeyError:
+            logging.error('Invalid sector name {0}'.format(sector_label))
+            raise
+
+    def getSectorLabels(self) -> list:
+        """Function to get the list of sector labels in the current universe.
+        
+        Returns:
+            list -- List of sector labels.
+        """
+
+        return self.sector_labels
