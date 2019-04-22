@@ -35,7 +35,7 @@ TODO: Add notes on how to download data bundles here
 
 The `Universe` submodule requires that sector universe files are in the following format (as a CSV file):
 
-|sector|symbol|
+|sector|ticker|
 |:----:|:----:|
 |sector_1|asset_11|
 |sector_1|asset_1n|
