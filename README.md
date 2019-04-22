@@ -29,3 +29,19 @@ $ source config/main.conf
 TODO: Add notes on how to download data bundles here
 
 - That's it!
+
+
+## Sector Universe Files
+
+The `Universe` submodule requires that sector universe files are in the following format (as a CSV file):
+
+|sector|symbol|
+|:----:|:----:|
+|sector_1|asset_11|
+|sector_1|asset_1n|
+|sector_2|asset_21|
+|sector_2|asset_2n|
+|sector_n|asset_n1|
+|sector_n|asset_nn|
+
+Note that the column names are important; the `Universe` submodule will fail if this format is not followed exactly.
