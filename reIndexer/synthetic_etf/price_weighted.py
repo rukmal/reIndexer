@@ -57,7 +57,7 @@ class PriceWeightedETF():
         current_sum = np.sum(current_asset_prices)
 
         # Return new weights
-        return self.alloc_weights
+        return current_asset_prices / current_sum
     
     def getPeriodLogReturn(self) -> float:
         """Get the single-period log return of the ETF.
