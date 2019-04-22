@@ -95,7 +95,7 @@ class Universe():
 
         return self.sector_labels
 
-    def removeInvalidTicker(self, remove_ticker: str):
+    def removeInvalidTicker(self, invalid_ticker: str):
         """Function to remove invalid tickers from the sector universe.
 
         Note that this does not mean that the ticker is itself 'invalid' in the
@@ -104,7 +104,7 @@ class Universe():
         will be omitted.
         
         Arguments:
-            remove_ticker {str} -- Ticker to be removed.
+            invalid_ticker {str} -- Ticker to be removed.
         """
 
         # Iterating over sectors
@@ -112,9 +112,9 @@ class Universe():
             # Iterating over tickers in the sector
             for sector_ticker in self.sectors[sector_label]:
                 # Check if the ticker matches, if so remove
-                if (sector_ticker == remove_ticker):
-                    self.sectors[sector_label].remove(remove_ticker)
+                if (sector_ticker == invalid_ticker):
+                    self.sectors[sector_label].remove(invalid_ticker)
                     logging.debug('Removed ticker {0} from sector {1}'
-                        .format(remove_ticker, sector_label))
+                        .format(invalid_ticker, sector_label))
                     # Adding to invalid tickers set
-                    self.remove_tickers.add((remove_ticker, sector_label))
+                    self.invalid_tickers.add((invalid_ticker, sector_label))
