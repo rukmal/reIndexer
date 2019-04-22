@@ -20,19 +20,32 @@ class PriceWeightedETF():
     """
 
     def __init__(self, sector_label: str, tickers: list):
+        """Initialization method for the PriceWeightedETF module. Binds
+        necessary metadata to class variables.
+        
+        Arguments:
+            sector_label {str} -- Sector label.
+            tickers {list} -- List of component tickers.
+        """
+
         self.name = sector_label
         self.tickers = tickers
 
-        # List to store total rolling price
-        self.total_asset_price = list()
-    
-    def setInitialData(self, zipline_data: BarData):
-        pass
+    def getWeights(self, zipline_data: BarData) -> np.array:
+        """Get the current weights of the component assets; this recomputes the
+        price-weighted allocation as of the date of the current `zipline_data`.
+        
+        Arguments:
+            zipline_data {BarData} -- Instance zipline data bundle.
+        
+        Returns:
+            np.array -- Array of asset weights.
+        """
 
-    def getWeights(self, zipline_data: BarData):
         # Getting current component asset prices
         current_asset_prices = np.array(zipline_data.current(
             symbols(*self.tickers),
+            'price'
         ))
 
         # Computing current sum
@@ -41,17 +54,36 @@ class PriceWeightedETF():
         # Computing portfolio weights
         self.alloc_weights = current_asset_prices / current_sum
 
-        print(self.alloc_weights)
-
+        # Return new weights
         return self.alloc_weights
     
-    def getLogReturn(self, zipline_data: BarData):
+    def getLogReturn(self) -> float:
+        """Get the log return of the ETF.
+        
+        Returns:
+            float -- Log return of the ETF.
+        """
+
         return self.log_ret
     
-    def getVariance(self, zipline_data: BarData):
+    def getVariance(self) -> float:
+        """Get the variance of the ETF.
+        
+        Returns:
+            float -- Variance of the ETF.
+        """
+
         return self.variance
 
     def updateParameters(self, zipline_data: BarData):
+        """Update ETF parameters; specifically, the asset allocations weights,
+        the log return (over the configuration lookback window),
+        and the variance.
+        
+        Arguments:
+            zipline_data {BarData} -- Instance zipline data bundle.
+        """
+
         historical_data = zipline_data.history(
             symbols(*self.tickers),
             'price',
@@ -59,22 +91,24 @@ class PriceWeightedETF():
             frequency=config.setf_data_frequency
         )
 
-        # Appending new price to the list
-        self.total_asset_price.append(historical_data.ix[-1].sum())
+        # Computing current total asset value, and previous total asset value
+        # NOTE: This is simply the sum across the asset prices, as this is a
+        #       price-weighted synthetic ETF model
+        current_sum = historical_data.ix[-1].sum()
+        prev_sum = historical_data.ix[0].sum()
         
         # Computing allocation weights
-        w = list(historical_data.ix[-1]) / self.total_asset_price[-1]
+        w = np.array(historical_data.ix[-1]) / current_sum
 
         # Computing component log returns
         component_log_ret = np.log(historical_data.pct_change() + 1)
 
         # Updating ETF variance
-        self.variance = np.log(w, np.dot(component_log_ret.cov(), w))
+        self.variance = np.dot(w, np.dot(component_log_ret.cov(), w))
 
         # Binding weights
         self.alloc_weights = w
 
         # Computing ETF expected log return
-        # NOTE: Simly using asset price total as this is price-weighted
-        self.log_ret = np.log((self.total_asset_price[-1]\
-            / self.total_asset_price[-2]) + 1)
+        # NOTE: Simply using asset price total as this is price-weighted
+        self.log_ret = np.log((current_sum / prev_sum) + 1)
