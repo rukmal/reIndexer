@@ -19,17 +19,22 @@ class PriceWeightedETF():
     portfolios of ETFs to be used for analysis.
     """
 
-    def __init__(self, sector_label: str, tickers: list):
+    def __init__(self, sector_label: str, tickers: list, zipline_data: BarData):
         """Initialization method for the PriceWeightedETF module. Binds
         necessary metadata to class variables.
         
         Arguments:
             sector_label {str} -- Sector label.
             tickers {list} -- List of component tickers.
+            zipline_data {BarData} -- Instance zipline data bundle.
         """
 
+        # Binding to class variables
         self.name = sector_label
         self.tickers = tickers
+
+        # Updating ETF parameters on init
+        self.updateParameters(zipline_data=zipline_data)
 
     def getWeights(self, zipline_data: BarData) -> np.array:
         """Get the current weights of the component assets; this recomputes the
@@ -51,9 +56,6 @@ class PriceWeightedETF():
         # Computing current sum
         current_sum = np.sum(current_asset_prices)
 
-        # Computing portfolio weights
-        self.alloc_weights = current_asset_prices / current_sum
-
         # Return new weights
         return self.alloc_weights
     
@@ -66,6 +68,14 @@ class PriceWeightedETF():
 
         return self.period_log_ret
     
+    def getLogReturns(self) -> np.array:
+        """Get the log returns series of the ETF.
+        
+        Returns:
+            np.array -- Log returns of the ETF.
+        """
+
+        return self.log_rets
 
     def getStdDev(self) -> float:
         """Get the standard deviation of the ETF.
@@ -104,12 +114,14 @@ class PriceWeightedETF():
 
         # Computing ETF log returns
         # NOTE: Simply using asset price total as this is price-weighted
-        self.log_ret = np.array(np.log(
+        # NOTE: Indexing from 1 to end to drop 'nan' value in first position;
+        #       this is an artifact of the `pct_change()` function
+        self.log_rets = np.array(np.log(
             historical_data.apply(np.sum, axis=1).pct_change() + 1
         )[1:])
 
         # Computing single-period ETF log return (sum of log returns)
-        self.period_log_ret = np.sum(self.log_ret)
+        self.period_log_ret = np.sum(self.log_rets)
 
         # Computing ETF variance
-        self.variance = np.var(self.log_ret)
+        self.variance = np.var(self.log_rets)
