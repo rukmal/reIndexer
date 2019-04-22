@@ -15,3 +15,6 @@ class config:
 
     # Portfolio configuration
     capital_base = 1e10
+
+    # Current sector universe (set at backtest initialization)
+    current_universe = None
