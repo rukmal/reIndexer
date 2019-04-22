@@ -66,7 +66,7 @@ class PriceWeightedETF():
 
         return self.period_log_ret
     
-            # Compuit
+
     def getStdDev(self) -> float:
         """Get the standard deviation of the ETF.
         
@@ -94,6 +94,7 @@ class PriceWeightedETF():
             zipline_data {BarData} -- Instance zipline data bundle.
         """
 
+        # Get historical price data for lookback window from config
         historical_data = zipline_data.history(
             symbols(*self.tickers),
             'price',
