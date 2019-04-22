@@ -1,0 +1,1 @@
+from .minvar import MinimumVariance
