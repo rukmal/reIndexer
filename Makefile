@@ -7,7 +7,7 @@
 
 # Constants
 ##########################
-DECRYPTED_CONFIG_FILES= $(filter-out config/base.json config/test.json, $(wildcard config/*.json)) # Exclude base.json
+DECRYPTED_CONFIG_FILES= $(filter-out , $(wildcard config/*.conf))
 ENCRYPTED_CONFIG_FILES= $(wildcard config/*.cast5)
 
 # Rules

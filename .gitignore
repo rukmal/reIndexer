@@ -1,9 +1,6 @@
-# Overhaul specific stuff & temporary
-notes.md
-tests/tmp.py
-
-# Protege files
-catalog*.xml
+# Config files & password
+config/*.conf
+config/passwd
 
 # LaTeX stuff
 *.log
