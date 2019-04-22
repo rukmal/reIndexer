@@ -1,9 +1,10 @@
 from ..cfg import config
 from ..sector_universe import Universe
+from ..synthetic_etf import PriceWeightedETF
 
 from zipline import run_algorithm
 from zipline.algorithm import TradingAlgorithm
-from zipline.api import order, record, symbols, symbol
+from zipline.api import order, record, symbol
 from zipline.data.bar_reader import NoDataForSid
 from zipline.errors import SymbolNotFound
 from zipline.protocol import BarData
@@ -29,16 +30,32 @@ class Backtest():
         # First run flag
         context.first_run = True
 
+        # Dictionary to store synthetic ETF objects
+        context.synthetics = dict()
+
     @staticmethod
     def zipline_handle_data(context: TradingAlgorithm, data: BarData):
-        # Validate sector universe if first run
+        # First run operations
         if (context.first_run):
+            # Validate sector universe
             config.sector_universe = Backtest.__validateSectorUniverse(
                 candidate_sector_universe=config.sector_universe
             )
+            # Building synthetic ETFs
+            for sector_label in config.sector_universe.getSectorLabels():
+                context.synthetics[sector_label] = PriceWeightedETF(
+                    sector_label=sector_label,
+                    tickers=config.sector_universe.getTickersInSector(
+                        sector_label=sector_label
+                    )
+                )
+                context.synthetics[sector_label].getWeights(
+                    zipline_data=data
+                )
+
             context.first_run = False
-        # print(data.history(symbol('AAPL'), 'price', bar_count=252, frequency='1d'))
-        # raise EOFError
+
+        raise EOFError
 
     def run(self) -> pd.DataFrame:
         return run_algorithm(
@@ -69,7 +86,8 @@ class Backtest():
             except (SymbolNotFound, NoDataForSid):
                 # Updating invalid ticker in the universe
                 candidate_sector_universe.removeInvalidTicker(
-                    invalid_ticker=ticker)
+                    invalid_ticker=ticker
+                )
                 logging.error('Ticker {0} in universe not in Zipline; removing'
                     .format(ticker))
         
