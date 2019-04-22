@@ -26,6 +26,9 @@ class Universe():
         logging.debug('Successfully loaded CSV with shape {0} for universe {1}'
             .format(self.universe_csv.shape, self.universe_name))
 
+        # Set to store invalid ticker tuples
+        self.invalid_tickers = set()
+
         # Isolating sectors
         self.sector_labels = list(self.universe_csv['sector'].unique())
 
@@ -91,3 +94,27 @@ class Universe():
         """
 
         return self.sector_labels
+
+    def removeInvalidTicker(self, remove_ticker: str):
+        """Function to remove invalid tickers from the sector universe.
+
+        Note that this does not mean that the ticker is itself 'invalid' in the
+        traditional sense of the word; rather, it means that the data bundle
+        used by the backtest engine does not have data for the ticker, so it
+        will be omitted.
+        
+        Arguments:
+            remove_ticker {str} -- Ticker to be removed.
+        """
+
+        # Iterating over sectors
+        for sector_label in self.sector_labels:
+            # Iterating over tickers in the sector
+            for sector_ticker in self.sectors[sector_label]:
+                # Check if the ticker matches, if so remove
+                if (sector_ticker == remove_ticker):
+                    self.sectors[sector_label].remove(remove_ticker)
+                    logging.debug('Removed ticker {0} from sector {1}'
+                        .format(remove_ticker, sector_label))
+                    # Adding to invalid tickers set
+                    self.remove_tickers.add((remove_ticker, sector_label))
