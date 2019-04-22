@@ -1,4 +1,5 @@
 from ..cfg import config
+from ..portfolio import MinimumVariance
 from ..sector_universe import Universe
 from ..synthetic_etf import PriceWeightedETF
 
@@ -9,6 +10,7 @@ from zipline.data.bar_reader import NoDataForSid
 from zipline.errors import SymbolNotFound
 from zipline.protocol import BarData
 import logging
+import numpy as np
 import pandas as pd
 
 
@@ -33,29 +35,70 @@ class Backtest():
         # Dictionary to store synthetic ETF objects
         context.synthetics = dict()
 
+        # Array to store ETF weights
+        context.setf_weights = dict()
+
+        # Dictionary to store positions
+        context.positions = dict()
+
+        # Counter
+        context.counter = 0
+
+        # Initializing portfolio
+        context.port = MinimumVariance()
+
+        # Previous weights
+        context.prev_weights = None
+
     @staticmethod
     def zipline_handle_data(context: TradingAlgorithm, data: BarData):
         # First run operations
         if (context.first_run):
             # Validate sector universe
             config.sector_universe = Backtest.__validateSectorUniverse(
-                candidate_sector_universe=config.sector_universe
+                candidate_sector_universe=config.sector_universe,
+                data=data
             )
+
             # Building synthetic ETFs
             for sector_label in config.sector_universe.getSectorLabels():
                 context.synthetics[sector_label] = PriceWeightedETF(
                     sector_label=sector_label,
                     tickers=config.sector_universe.getTickersInSector(
                         sector_label=sector_label
-                    )
-                )
-                context.synthetics[sector_label].getWeights(
+                    ),
                     zipline_data=data
                 )
 
+            # Update first run flag
             context.first_run = False
+        
 
-        raise EOFError
+        # Portfolio Rebalancing
+        if ((context.counter % config.port_rebalancing_period) == 0):
+            # Building log returns matrix
+            log_rets = np.array([context.synthetics[l].getLogReturns()
+                for l in config.sector_universe.getSectorLabels()])
+            # Rebalancing portfolio
+            context.w = context.port.computeWeights(
+                log_rets=log_rets,
+                prev_weights=context.prev_weights            
+            )
+            print(context.w)
+
+        # Synthetic ETF restructuring
+        # if ((context.counter % config.setf_restructure_window) == 0):
+        #     for sector_label in config.sector_universe.getSectorLabels():
+        #         new_w = context.synthetics[sector_label].getWeights()
+        #         # Iterate through holdings dictionary; update necessary values
+        #         for idx, ticker in context.synthetics[sector_label]\
+        #             .getTickersInSector():
+        #             # Update key value (ticker, position) pair of the (unscaled) positions here
+        #             # Need to multiply ETF component weight by sETF weight in the portfolio
+        #             pass
+
+        # Update counter each iteration
+        context.counter += 1
 
     def run(self) -> pd.DataFrame:
         return run_algorithm(
@@ -69,7 +112,7 @@ class Backtest():
         )
 
     @staticmethod
-    def __validateSectorUniverse(candidate_sector_universe: Universe):
+    def __validateSectorUniverse(candidate_sector_universe: Universe, data):
         """Function to validate a candidate sector universe. Ensures that
         Zipline can look up all tickers.
         
@@ -83,12 +126,14 @@ class Backtest():
         for ticker in candidate_sector_universe.getUniqueTickers():
             try:
                 symbol(ticker)
+                if not data.can_trade(symbol(ticker)):
+                    raise NoDataForSid
             except (SymbolNotFound, NoDataForSid):
                 # Updating invalid ticker in the universe
                 candidate_sector_universe.removeInvalidTicker(
                     invalid_ticker=ticker
                 )
-                logging.error('Ticker {0} in universe not in Zipline; removing'
+                logging.info('Ticker {0} in universe not in Zipline; removing'
                     .format(ticker))
         
         # Return 'clean' sector universe
