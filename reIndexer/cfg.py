@@ -18,3 +18,8 @@ class config:
 
     # Current sector universe (set at backtest initialization)
     current_universe = None
+
+    # Synthetic ETF
+    setf_base_value = 125.0  # Identical to NASDAQ base value
+    setf_lookback_window = 252  # days (1 work year)
+    setf_data_frequency = '1d'  # '1m' or '1d' for minute/daily respectively
