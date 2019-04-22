@@ -9,7 +9,7 @@ class config:
     backtest_end = pd.to_datetime('2018-03-01').tz_localize(tz_local)
 
     # Computation windows
-    rebalancing_period = 30  # days
+    port_rebalancing_period = 21  # days
     backtest_frequency = 'daily'  # Must be either 'daily' or 'minute'
 
 
