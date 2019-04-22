@@ -57,15 +57,25 @@ class PriceWeightedETF():
         # Return new weights
         return self.alloc_weights
     
-    def getLogReturn(self) -> float:
-        """Get the log return of the ETF.
+    def getPeriodLogReturn(self) -> float:
+        """Get the single-period log return of the ETF.
         
         Returns:
-            float -- Log return of the ETF.
+            float -- Single-period log return of the ETF.
         """
 
-        return self.log_ret
+        return self.period_log_ret
     
+            # Compuit
+    def getStdDev(self) -> float:
+        """Get the standard deviation of the ETF.
+        
+        Returns:
+            float -- Standard deviation of the ETF.
+        """
+
+        return np.sqrt(self.variance)
+
     def getVariance(self) -> float:
         """Get the variance of the ETF.
         
@@ -91,24 +101,14 @@ class PriceWeightedETF():
             frequency=config.setf_data_frequency
         )
 
-        # Computing current total asset value, and previous total asset value
-        # NOTE: This is simply the sum across the asset prices, as this is a
-        #       price-weighted synthetic ETF model
-        current_sum = historical_data.ix[-1].sum()
-        prev_sum = historical_data.ix[0].sum()
-        
-        # Computing allocation weights
-        w = np.array(historical_data.ix[-1]) / current_sum
-
-        # Computing component log returns
-        component_log_ret = np.log(historical_data.pct_change() + 1)
-
-        # Updating ETF variance
-        self.variance = np.dot(w, np.dot(component_log_ret.cov(), w))
-
-        # Binding weights
-        self.alloc_weights = w
-
-        # Computing ETF expected log return
+        # Computing ETF log returns
         # NOTE: Simply using asset price total as this is price-weighted
-        self.log_ret = np.log((current_sum / prev_sum) + 1)
+        self.log_ret = np.array(np.log(
+            historical_data.apply(np.sum, axis=1).pct_change() + 1
+        )[1:])
+
+        # Computing single-period ETF log return (sum of log returns)
+        self.period_log_ret = np.sum(self.log_ret)
+
+        # Computing ETF variance
+        self.variance = np.var(self.log_ret)
