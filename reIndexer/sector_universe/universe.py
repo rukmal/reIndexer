@@ -21,7 +21,8 @@ class Universe():
 
         # Binding args to class variables
         self.universe_name = universe_name
-        self.universe_csv = pd.read_csv(filepath_or_buffer=csv_file)
+        self.universe_csv = pd.read_csv(filepath_or_buffer=csv_file,
+                                        dtype='str')
 
         logging.debug('Successfully loaded CSV with shape {0} for universe {1}'
             .format(self.universe_csv.shape, self.universe_name))
