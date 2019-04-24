@@ -15,6 +15,7 @@ class config:
 
     # Portfolio configuration
     capital_base = 1e10
+    optim_tol = 1e-6  # Optimization tolerance
 
     # Current sector universe (set at backtest initialization)
     current_universe = None
