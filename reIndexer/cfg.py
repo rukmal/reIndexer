@@ -24,3 +24,8 @@ class config:
     setf_lookback_window = 252  # days (1 work year)
     setf_data_frequency = '1d'  # '1m' or '1d' for minute/daily respectively
     setf_restructure_window = setf_lookback_window / 12  # days (12 times / year)
+
+
+    # TODO here
+    # - Need to change the 'offset' date model to be zipline scheduler based (i.e. monthly w/ number of days offset), or yearly if u want more than that [or just make monthly the max, that's reasonable]
+    # - 

@@ -72,10 +72,12 @@ class Backtest():
 
             # Update first run flag
             context.first_run = False
-        
 
         # Portfolio Rebalancing
         if ((context.counter % config.port_rebalancing_period) == 0):
+            # Updating parameters
+            [context.synthetics[l].updateParameters(data)
+                for l in config.sector_universe.getSectorLabels()]
             # Building log returns matrix
             log_rets = np.array([context.synthetics[l].getLogReturns()
                 for l in config.sector_universe.getSectorLabels()])
@@ -84,18 +86,20 @@ class Backtest():
                 log_rets=log_rets,
                 prev_weights=context.prev_weights            
             )
-            print(context.w)
+            # Update holdings here (function obviously as you're doing this twice)
 
         # Synthetic ETF restructuring
-        # if ((context.counter % config.setf_restructure_window) == 0):
-        #     for sector_label in config.sector_universe.getSectorLabels():
-        #         new_w = context.synthetics[sector_label].getWeights()
-        #         # Iterate through holdings dictionary; update necessary values
-        #         for idx, ticker in context.synthetics[sector_label]\
-        #             .getTickersInSector():
-        #             # Update key value (ticker, position) pair of the (unscaled) positions here
-        #             # Need to multiply ETF component weight by sETF weight in the portfolio
-        #             pass
+        if ((context.counter % config.setf_restructure_window) == 0):
+            for sector_label in config.sector_universe.getSectorLabels():
+                new_w = context.synthetics[sector_label].getWeights()
+                # Iterate through holdings dictionary; update necessary values
+                for idx, ticker in context.synthetics[sector_label]\
+                    .getTickersInSector():
+                    # Update key value (ticker, position) pair of the (unscaled) positions here
+                    # Need to multiply ETF component weight by sETF weight in the portfolio
+                    pass
+        
+        # Bookkeepign (w/ zipline record; make separate module of course)
 
         # Update counter each iteration
         context.counter += 1
