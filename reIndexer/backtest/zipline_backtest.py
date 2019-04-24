@@ -29,27 +29,12 @@ class Backtest():
         Arguments:
             context {TradingAlgorithm} -- Context variable for the algorithm
         """
-        
-        # First run flag
-        context.first_run = True
 
-        # Dictionary to store synthetic ETF objects
-        context.synthetics = dict()
-
-        # Array to store ETF weights
-        context.setf_weights = dict()
-
-        # Dictionary to store positions
-        context.positions = dict()
-
-        # Counter
-        context.counter = 0
-
-        # Initializing portfolio
-        context.port = MinimumVariance()
-
-        # Previous weights
-        context.prev_weights = None
+        # Zipline context namespace variables
+        context.first_run = True  # First run flag
+        context.synthetics = dict()  # Dictionary to store synthetic ETF objects
+        context.counter = 0  # Counter
+        context.port = MinimumVariance()  # Initializing portfolio
 
         # Enforcing long trades only
         set_long_only()
@@ -64,49 +49,84 @@ class Backtest():
                 data=data
             )
 
-            # Building synthetic ETFs
-            for sector_label in config.sector_universe.getSectorLabels():
-                # Instantiating synthetic ETF objects for each sector
-                context.synthetics[sector_label] = PriceWeightedETF(
-                    sector_label=sector_label,
-                    tickers=config.sector_universe.getTickersInSector(
-                        sector_label=sector_label
-                    ),
-                    zipline_data=data
-                )
-                # Balance portfolio and set initial position here
+            # Building synthetic sector ETFs
+            Backtest.buildSyntheticETFs(context=context, zipline_data=data)
+
+            # Computing initial portfolio, updating positions
+            Backtest.rebalancePortfolio(
+                context=context,
+                zipline_data=data,
+                update_positions=True
+            )
+
             # Update first run flag
             context.first_run = False
 
         # Portfolio Rebalancing
         if ((context.counter % config.port_rebalancing_period) == 0):
-            # Updating parameters
-            [context.synthetics[l].updateParameters(data)
-                for l in config.sector_universe.getSectorLabels()]
-            # Building log returns matrix
-            log_rets = np.array([context.synthetics[l].getLogReturns()
-                for l in config.sector_universe.getSectorLabels()])
-            # Rebalancing portfolio
-            context.w = context.port.computeWeights(
-                log_rets=log_rets,
-                prev_weights=context.prev_weights            
-            )
-            # Adding new weights to dictionary corresponding to sector list
-            context.port_weights = dict(zip(
-                config.sector_universe.getSectorLabels(),
-                context.w
-            ))
-            # Updating positions
-            Backtest.updatePositions(context=context)
+            Backtest.rebalancePortfolio(context=context, zipline_data=data)
 
         # Synthetic ETF restructuring
         if ((context.counter % config.setf_restructure_window) == 0):
-            Backtest.updatePositions(context=context)
+            Backtest.rebalancePortfolio(context=context, zipline_data=data)
         
         # Bookkeepign (w/ zipline record; make separate module of course)
 
         # Update counter each iteration
         context.counter += 1
+
+    @staticmethod
+    def buildSyntheticETFs(context: TradingAlgorithm, zipline_data: BarData):
+        # Looping through each sector
+        for sector_label in config.sector_universe.getSectorLabels():
+            # Initializing synthetic ETF, storing in dictionary
+            context.synthetics[sector_label] = PriceWeightedETF(
+                sector_label=sector_label,
+                tickers=config.sector_universe.getTickersInSector(
+                    sector_label=sector_label
+                ),
+                zipline_data=zipline_data
+            )
+
+    @staticmethod
+    def rebalancePortfolio(context: TradingAlgorithm, zipline_data: BarData,
+        update_positions: bool=True) -> np.array:
+        # Updating parameters for each of the sectors
+        [context.synthetics[i].updateParameters(zipline_data=zipline_data)
+            for i in config.sector_universe.getSectorLabels()]
+        
+        # Building log returns matrix
+        log_rets = np.array([context.synthetics[i].getLogReturns()
+            for i in config.sector_universe.getSectorLabels()])
+        
+        # Rebalancing portfolio, getting new weights
+        context.port_w = context.port.computeWeights(
+            log_rets=log_rets
+        )
+
+        # Adding new weights to dictionary corresponding to sector list
+        context.port_weights = dict(zip(
+            config.sector_universe.getSectorLabels(),
+            context.port_w
+        ))
+
+        # Update positions if requested
+        if update_positions:
+            Backtest.updatePositions(context=context)
+
+        # Return positions
+        return context.port_w
+
+    @staticmethod
+    def restructureETF(context: TradingAlgorithm, zipline_data: BarData,
+        update_positions: bool=True):
+        # Updating weights for each of the synthetic ETF components
+        [context.synthetics[i].updateWeights(zipline_data=zipline_data)
+            for i in config.sector_universe.getSectorLabels()]
+
+        # Update positions if requested
+        if update_positions:
+            Backtest.updatePositions(context=context)
 
     @staticmethod
     def updatePositions(context: TradingAlgorithm):
