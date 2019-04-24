@@ -105,11 +105,9 @@ class Backtest():
             Backtest.rebalancePortfolio(
                 context=context,
                 zipline_data=data,
-                update_positions=True
+                update_positions=True,
+                log_commission=False
             )
-
-            # Update first run flag
-            context.first_run = False
 
             # Updating initial flags for rebalancing/restructuring trigger
             context.util.setInitialFlags()
@@ -118,7 +116,13 @@ class Backtest():
             context.old_restr_prices = context.old_port_prices = Backtest\
                 .getETFPrices(context=context, zipline_data=data)
 
-            # Skip rest of logic for first iteration
+            # Logging ETF prices
+            context.books.etfPriceLog(
+                etf_prices=Backtest.getETFPrices(context, data)
+            )
+
+            # Skip rest of logic for first iteration, update iteration flag
+            context.first_run = False
             return
 
         # Portfolio Rebalancing
@@ -126,7 +130,8 @@ class Backtest():
             Backtest.rebalancePortfolio(
                 context=context,
                 zipline_data=data,
-                update_positions=True    
+                update_positions=True,
+                log_commission=True
             )
 
         # Synthetic ETF restructuring
@@ -134,10 +139,12 @@ class Backtest():
             Backtest.restructureETF(
                 context=context,
                 zipline_data=data,
-                update_positions=True
+                update_positions=True,
+                log_commission=True
             )
-        
-        # Bookkeepign (w/ zipline record; make separate module of course)
+
+        # Log ETF prices
+        context.books.etfPriceLog(Backtest.getETFPrices(context, data))
 
     @staticmethod
     def buildSyntheticETFs(context: TradingAlgorithm, zipline_data: BarData):
@@ -163,7 +170,7 @@ class Backtest():
 
     @staticmethod
     def rebalancePortfolio(context: TradingAlgorithm, zipline_data: BarData,
-        update_positions: bool=True) -> np.array:
+        update_positions: bool=True, log_commission: bool=True) -> np.array:
         """Function to rebalance a portfolio of synthetic ETFs, with the option
         to trigger an execution of trades within Zipline to enforce the new
         portfolio synthetic ETF asset allocations.
@@ -178,10 +185,14 @@ class Backtest():
         Keyword Arguments:
             update_positions {bool} -- Flag to update positions in Zipline
                                        (default: {True}).
+            log_commissions {bool} -- Flag to log commissions (default: {True}).
         
         Returns:
             np.array -- Portfolio weights.
         """
+
+        if log_commission:
+            old_weights = context.port_w
 
         # Updating parameters for each of the sectors
         [context.synthetics[i].updateParameters(zipline_data=zipline_data)
@@ -205,6 +216,18 @@ class Backtest():
         # Update positions if requested
         if update_positions:
             Backtest.updatePositions(context=context)
+
+        # Logging rebalancing commissions, updating old rebalancing prices
+        if log_commission:
+            new_etf_prices = Backtest.getETFPrices(context, zipline_data)
+            context.books.rebalanceLog(
+                old_prices=context.old_port_prices,
+                old_weights=old_weights,
+                new_prices=new_etf_prices,
+                new_weights=context.port_w
+            )
+            # Update rebalance prices for next iteration
+            context.old_port_prices = new_etf_prices
 
         # Return positions
         return context.port_w
