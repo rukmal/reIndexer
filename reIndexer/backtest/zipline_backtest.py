@@ -1,3 +1,4 @@
+from .util import Utilities
 from ..cfg import config
 from ..portfolio import MinimumVariance
 from ..sector_universe import Universe
@@ -5,7 +6,8 @@ from ..synthetic_etf import PriceWeightedETF
 
 from zipline import run_algorithm
 from zipline.algorithm import TradingAlgorithm
-from zipline.api import order_target_percent, record, set_long_only, symbol
+from zipline.api import order_target_percent, record, set_long_only,\
+    set_max_leverage, symbol
 from zipline.data.bar_reader import NoDataForSid
 from zipline.finance.execution import MarketOrder
 from zipline.errors import SymbolNotFound
@@ -39,12 +41,18 @@ class Backtest():
         # Enforcing long trades only
         set_long_only()
 
+        # Setting maximum leverage to 1 (i.e. no leverage)
+        set_max_leverage(max_leverage=1.0)
+
+        # Initializing utilities module
+        context.util = Utilities()
+
     @staticmethod
     def zipline_handle_data(context: TradingAlgorithm, data: BarData):
         # First run operations
         if (context.first_run):
             # Validate sector universe
-            config.sector_universe = Backtest.__validateSectorUniverse(
+            config.sector_universe = Backtest.validateSectorUniverse(
                 candidate_sector_universe=config.sector_universe,
                 data=data
             )
@@ -62,18 +70,29 @@ class Backtest():
             # Update first run flag
             context.first_run = False
 
+            # Updating initial flags for rebalancing/restructuring trigger
+            context.util.setInitialFlags()
+
+            # Skip rest of logic for first iteration
+            return
+
         # Portfolio Rebalancing
-        if ((context.counter % config.port_rebalancing_period) == 0):
-            Backtest.rebalancePortfolio(context=context, zipline_data=data)
+        if context.util.isRebalanceTriggered():
+            Backtest.rebalancePortfolio(
+                context=context,
+                zipline_data=data,
+                update_positions=True    
+            )
 
         # Synthetic ETF restructuring
-        if ((context.counter % config.setf_restructure_window) == 0):
-            Backtest.rebalancePortfolio(context=context, zipline_data=data)
+        if context.util.isRestructureTriggered():
+            Backtest.rebalancePortfolio(
+                context=context,
+                zipline_data=data,
+                update_positions=True
+            )
         
         # Bookkeepign (w/ zipline record; make separate module of course)
-
-        # Update counter each iteration
-        context.counter += 1
 
     @staticmethod
     def buildSyntheticETFs(context: TradingAlgorithm, zipline_data: BarData):
@@ -163,7 +182,7 @@ class Backtest():
         )
 
     @staticmethod
-    def __validateSectorUniverse(candidate_sector_universe: Universe, data):
+    def validateSectorUniverse(candidate_sector_universe: Universe, data):
         """Function to validate a candidate sector universe. Ensures that
         Zipline can look up all tickers.
         
