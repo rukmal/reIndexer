@@ -59,8 +59,9 @@ class PriceWeightedETF():
         # Computing current sum
         current_sum = np.sum(current_asset_prices)
 
-        # Binding allocation weights
+        # Binding allocation weights (list and dict)
         self.alloc_weights = current_asset_prices / current_sum
+        self.alloc_weights_dict = dict(zip(self.tickers, self.alloc_weights))
 
         # Return new weights
         return self.alloc_weights
@@ -120,6 +121,36 @@ class PriceWeightedETF():
 
         # Comuting current price (dot product b/w current prices and alloc)
         return np.dot(current_asset_prices, self.alloc_weights)
+
+    def getTickerList(self) -> list:
+        """Get the list of tickers (in order; corresponds to asset weights and
+        other component-ordered data from the ETF etc.).
+        
+        Returns:
+            list -- List of component asset tickers.
+        """
+
+        return self.tickers
+
+    def getTickerWeight(self, ticker: str) -> float:
+        """Get the current synthetic ETF allocation weight for the given ticker.
+        
+        Arguments:
+            ticker {str} -- Target ticker.
+        
+        Raises:
+            KeyError: Raised when the given ticker is not found in the ETF.
+        
+        Returns:
+            float -- Allocation weight for `ticker`.
+        """
+
+        if ticker not in self.tickers:
+            logging.error('Ticker {0} not found in the current synthetic ETF'.
+                format(ticker))
+            raise KeyError
+        
+        return self.alloc_weights_dict[ticker]
 
     def updateParameters(self, zipline_data: BarData):
         """Update ETF parameters; specifically, the asset allocations weights,
