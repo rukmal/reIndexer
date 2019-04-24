@@ -5,8 +5,9 @@ from ..synthetic_etf import PriceWeightedETF
 
 from zipline import run_algorithm
 from zipline.algorithm import TradingAlgorithm
-from zipline.api import order, record, symbol
+from zipline.api import order_target_percent, record, set_long_only, symbol
 from zipline.data.bar_reader import NoDataForSid
+from zipline.finance.execution import MarketOrder
 from zipline.errors import SymbolNotFound
 from zipline.protocol import BarData
 import logging
@@ -50,6 +51,9 @@ class Backtest():
         # Previous weights
         context.prev_weights = None
 
+        # Enforcing long trades only
+        set_long_only()
+
     @staticmethod
     def zipline_handle_data(context: TradingAlgorithm, data: BarData):
         # First run operations
@@ -62,6 +66,7 @@ class Backtest():
 
             # Building synthetic ETFs
             for sector_label in config.sector_universe.getSectorLabels():
+                # Instantiating synthetic ETF objects for each sector
                 context.synthetics[sector_label] = PriceWeightedETF(
                     sector_label=sector_label,
                     tickers=config.sector_universe.getTickersInSector(
@@ -69,7 +74,7 @@ class Backtest():
                     ),
                     zipline_data=data
                 )
-
+                # Balance portfolio and set initial position here
             # Update first run flag
             context.first_run = False
 
@@ -86,23 +91,45 @@ class Backtest():
                 log_rets=log_rets,
                 prev_weights=context.prev_weights            
             )
-            # Update holdings here (function obviously as you're doing this twice)
+            # Adding new weights to dictionary corresponding to sector list
+            context.port_weights = dict(zip(
+                config.sector_universe.getSectorLabels(),
+                context.w
+            ))
+            # Updating positions
+            Backtest.updatePositions(context=context)
 
         # Synthetic ETF restructuring
         if ((context.counter % config.setf_restructure_window) == 0):
-            for sector_label in config.sector_universe.getSectorLabels():
-                new_w = context.synthetics[sector_label].getWeights()
-                # Iterate through holdings dictionary; update necessary values
-                for idx, ticker in context.synthetics[sector_label]\
-                    .getTickersInSector():
-                    # Update key value (ticker, position) pair of the (unscaled) positions here
-                    # Need to multiply ETF component weight by sETF weight in the portfolio
-                    pass
+            Backtest.updatePositions(context=context)
         
         # Bookkeepign (w/ zipline record; make separate module of course)
 
         # Update counter each iteration
         context.counter += 1
+
+    @staticmethod
+    def updatePositions(context: TradingAlgorithm):
+        # Looping through each sector
+        for sector_label in config.sector_universe.getSectorLabels():
+            # Isolating current sector synthetic ETF
+            sector = context.synthetics[sector_label]
+            # Isolating portfolio weight for current sector
+            sector_weight = context.port_weights[sector_label]
+            for ticker in sector.getTickerList():
+                # Computing current portfolio percentage of the given ticker
+                # NOTE: This is the product of the synthetic ETF weight in the
+                #       portfolio and the component weight in the synthetic ETF
+                port_ticker_weight = sector_weight *\
+                    sector.getTickerWeight(ticker)
+
+                # Executing trade to update weight in the portfolio
+                order_target_percent(
+                    asset=symbol(ticker),
+                    target=port_ticker_weight
+                )
+                logging.debug('Updated portfolio ticker {0} weight to {1}%'.
+                    format(ticker, port_ticker_weight * 100))
 
     def run(self) -> pd.DataFrame:
         return run_algorithm(
