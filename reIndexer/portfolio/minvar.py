@@ -9,18 +9,12 @@ class MinimumVariance():
 
     def __init__(self):
         # See: http://bit.ly/2IzJWE0 and http://bit.ly/2IPlTQP for more on this
-        # NOTE: Ineq constraints are tested for negativity, so this sums
-        #       to < 1 if any of the elements in the weights array are
-        #       negative (i.e. no short sales)
         # NOTE: Equality constraints are tested to be equal to zero, so the sum
         #       of the weights - 1 must be 0
         # NOTE: (to self) Spent HOURS on this; the constraints were fucked up
         #       with list comprehensions. Constraint functions will not work
         #       with list comprehensions, because of Python's Late Binding
         #       closures. See: http://bit.ly/2KWxhwW
-        #       Ineq constraint was:
-        #       lambda x: np.sum([-1 if i < 0 else 0 for i in x]); did not work
-        #       New formulation literally does the same thing
         self.optim_constraints = (
             {
                 'type': 'eq',
@@ -53,8 +47,7 @@ class MinimumVariance():
             x0=prev_weights,
             constraints=self.optim_constraints,
             options={
-                'disp': True,
-                'maxiter': 1e3,
+                'maxiter': 1e4,
             },
             bounds=self.bounds_base * cov_mat.shape[0],
             tol=config.optim_tol

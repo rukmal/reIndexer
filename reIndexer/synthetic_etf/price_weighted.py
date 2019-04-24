@@ -37,10 +37,10 @@ class PriceWeightedETF():
         self.updateParameters(zipline_data=zipline_data)
 
         # Compute allocation weights on initialization
-        self.getWeights(zipline_data=zipline_data)
+        self.updateWeights(zipline_data=zipline_data)
 
-    def getWeights(self, zipline_data: BarData) -> np.array:
-        """Get the current weights of the component assets; this recomputes the
+    def updateWeights(self, zipline_data: BarData) -> np.array:
+        """Update current weights of the component assets; this recomputes the
         price-weighted allocation as of the date of the current `zipline_data`.
         
         Arguments:
