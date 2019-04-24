@@ -5,7 +5,16 @@ import logging
 
 
 class Utilities():
+    """Helper utilities for the backtesting module.
+    """
+
     def __init__(self):
+        """Initialization method for the 'Utilities' class.
+
+        Handles setting initial flags, and computes date ranges for the target
+        weeks for restructuring/rebalancing.
+        """
+
         # Isolating date range for the target restructuring week
         self.restr_week_start = (config.setf_restructure_trigger['week']
             - 1) * 7
@@ -20,6 +29,13 @@ class Utilities():
         self.last_month_rebalance = 0
     
     def isRestructureTriggered(self) -> bool:
+        """Checks if a restructure is triggered at the current backtesting
+        date (indicated by `get_datetime`).
+        
+        Returns:
+            bool -- True if restructure is triggered, false otherwise.
+        """
+
         # Checking if correct week
         if (self.restr_week_start < get_datetime().day <= self.restr_week_end):
             # Flag if specific day matches
@@ -44,6 +60,13 @@ class Utilities():
         return False
 
     def isRebalanceTriggered(self) -> bool:
+        """Checks if a rebalance is triggered at the current backtesting
+        date (indicated by `get_datetime`).
+        
+        Returns:
+            bool -- True if rebalance is triggered, false otherwise.
+        """
+
         # Checking if correct week
         if (self.reb_week_start < get_datetime().day <= self.reb_week_end):
             # Flag if specific day matches
@@ -68,5 +91,11 @@ class Utilities():
         return False
 
     def setInitialFlags(self):
+        """Set initial flags. This calls the restructuring and rebalancing
+        triggers to update wildcard handling flags correctly.
+
+        This is to be called in the first iteration of the backtest only.
+        """
+
         self.isRebalanceTriggered()
         self.isRestructureTriggered()
