@@ -117,8 +117,9 @@ class Backtest():
                 .getETFPrices(context=context, zipline_data=data)
 
             # Logging ETF prices
-            context.books.etfPriceLog(
-                etf_prices=Backtest.getETFPrices(context, data)
+            context.books.etfDataLog(
+                etf_prices=Backtest.getETFPrices(context, data),
+                etf_weights=context.port_w
             )
 
             # Skip rest of logic for first iteration, update iteration flag
@@ -144,7 +145,10 @@ class Backtest():
             )
 
         # Log ETF prices
-        context.books.etfPriceLog(Backtest.getETFPrices(context, data))
+        context.books.etfDataLog(
+            etf_prices=Backtest.getETFPrices(context, data),
+            etf_weights=context.port_w
+        )
 
     @staticmethod
     def buildSyntheticETFs(context: TradingAlgorithm, zipline_data: BarData):
