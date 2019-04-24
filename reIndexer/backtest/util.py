@@ -2,6 +2,7 @@ from ..cfg import config
 
 from zipline.api import get_datetime
 import logging
+import pandas as pd
 
 
 class Utilities():
@@ -28,63 +29,83 @@ class Utilities():
         self.last_month_restructure = 0
         self.last_month_rebalance = 0
     
-    def isRestructureTriggered(self) -> bool:
+    def isRestructureTriggered(self, current_date: pd.Timestamp=None,
+        log_flag: bool=True) -> bool:
         """Checks if a restructure is triggered at the current backtesting
         date (indicated by `get_datetime`).
-        
+                
+        Keyword Arguments:
+            current_date {pd.Timestamp} -- Current date to use as an override
+                                           (default: {None}).
+            log_flag {bool} -- Flag for logging (default: {True}).
+
         Returns:
             bool -- True if restructure is triggered, false otherwise.
         """
 
+        # Override current date with sim date if not provided
+        if not current_date:
+            current_date = get_datetime()
+
         # Checking if correct week
-        if (self.restr_week_start < get_datetime().day <= self.restr_week_end):
+        if (self.restr_week_start < current_date.day <= self.restr_week_end):
             # Flag if specific day matches
-            is_triggered = (get_datetime().weekday_name ==
+            is_triggered = (current_date.weekday_name ==
                 config.setf_restructure_trigger['day'])
 
             # Handling wildcard (need to check flag)
             if ((config.setf_restructure_trigger['day'] == '*') and
-                (self.last_month_restructure != get_datetime().month)):
+                (self.last_month_restructure != current_date.month)):
                 # Set flag to true
                 is_triggered = True
                 # Update flag
-                self.last_month_restructure = get_datetime().month
+                self.last_month_restructure = current_date.month
 
             # Log and return
-            if is_triggered:
+            if is_triggered and log_flag:
                 logging.info('Synthetic ETF restructure triggered on {0} ({1})'
-                    .format(get_datetime().weekday_name, get_datetime().date()))
+                    .format(current_date.weekday_name, current_date.date()))
             
             return is_triggered
         # Not in correct week
         return False
 
-    def isRebalanceTriggered(self) -> bool:
+    def isRebalanceTriggered(self, current_date: pd.Timestamp=None,
+        log_flag: bool=True) -> bool:
         """Checks if a rebalance is triggered at the current backtesting
         date (indicated by `get_datetime`).
         
+        Keyword Arguments:
+            current_date {pd.Timestamp} -- Current date to use as an override
+                                           (default: {None}).
+            log_flag {bool} -- Flag for logging (default: {True}).
+
         Returns:
             bool -- True if rebalance is triggered, false otherwise.
         """
 
+        # Override current date with sim date if not provided
+        if not current_date:
+            current_date = get_datetime()
+
         # Checking if correct week
-        if (self.reb_week_start < get_datetime().day <= self.reb_week_end):
+        if (self.reb_week_start < current_date.day <= self.reb_week_end):
             # Flag if specific day matches
-            is_triggered = (get_datetime().weekday_name ==
+            is_triggered = (current_date.weekday_name ==
                 config.rebalance_trigger['day'])
 
             # Handling wildcard (need to check flag)
             if ((config.rebalance_trigger['day'] == '*') and
-                (self.last_month_rebalance != get_datetime().month)):
+                (self.last_month_rebalance != current_date.month)):
                 # Set flag to true
                 is_triggered = True
                 # Update flag
-                self.last_month_rebalance = get_datetime().month
+                self.last_month_rebalance = current_date.month
 
             # Log and return
-            if is_triggered:
+            if is_triggered and log_flag:
                 logging.info('ETF Portfolio rebalance triggered on {0} ({1})'
-                    .format(get_datetime().weekday_name, get_datetime().date()))
+                    .format(current_date.weekday_name, current_date.date()))
         
             return is_triggered
         # Not in correct week

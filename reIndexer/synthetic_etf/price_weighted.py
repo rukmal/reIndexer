@@ -1,4 +1,5 @@
 from ..cfg import config
+from ..backtest.util import Utilities
 
 from zipline.api import symbols
 from zipline.protocol import BarData
@@ -32,6 +33,9 @@ class PriceWeightedETF():
         # Binding to class variables
         self.name = sector_label
         self.tickers = tickers
+
+        # Initializing utilities module (for historical restructure flag)
+        self.backtest_util = Utilities()
 
         # Updating ETF parameters on init
         self.updateParameters(zipline_data=zipline_data)
@@ -176,10 +180,14 @@ class PriceWeightedETF():
         # Computing prices, restructuring per the period in the configuration
         counter = 0
         setf_prices = np.array([])
-        for _, row in historical_data.iterrows():
-            if ((counter % config.setf_restructure_window) == 0):
+        first_run = True  # Flag for first run
+        for idx, row in historical_data.iterrows():
+            if (self.backtest_util.isRestructureTriggered(
+                current_date=idx, log_flag=False) or first_run):
                 # Recompute allocation weights
                 alloc_weights = np.array(row / row.sum())
+                # Update first run flag
+                first_run = False
             # Computing synthetic ETF price
             setf_price = np.dot(alloc_weights, row.values)
             # Appending to prices array
