@@ -17,8 +17,8 @@ class config:
     capital_base = 1e10
     optim_tol = 1e-6  # Optimization tolerance
 
-    # Current sector universe (set at backtest initialization)
-    current_universe = None
+    # Sector universe (set at backtest initialization)
+    sector_universe = None
 
     # Synthetic ETF
     setf_base_value = 125.0  # Identical to NASDAQ base value
