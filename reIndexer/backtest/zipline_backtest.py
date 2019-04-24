@@ -1,3 +1,4 @@
+from .bookkeeping import Bookkeeping
 from .util import Utilities
 from ..cfg import config
 from ..portfolio import MinimumVariance
@@ -63,6 +64,9 @@ class Backtest():
         # Initializing utilities module
         context.util = Utilities()
 
+        # Initializing bookkeeping module
+        context.books = Bookkeeping()
+
     @staticmethod
     def zipline_handle_data(context: TradingAlgorithm, data: BarData):
         """Zipline `handle_data` method override. Handles all trading
@@ -86,7 +90,7 @@ class Backtest():
             # Validate sector universe
             config.sector_universe = Backtest.validateSectorUniverse(
                 candidate_sector_universe=config.sector_universe,
-                data=data
+                zipline_data=data
             )
 
             # Building synthetic sector ETFs
@@ -118,7 +122,7 @@ class Backtest():
 
         # Synthetic ETF restructuring
         if context.util.isRestructureTriggered():
-            Backtest.rebalancePortfolio(
+            Backtest.restructureETF(
                 context=context,
                 zipline_data=data,
                 update_positions=True
@@ -198,7 +202,7 @@ class Backtest():
 
     @staticmethod
     def restructureETF(context: TradingAlgorithm, zipline_data: BarData,
-        update_positions: bool=True):
+        update_positions: bool=True, log_commission: bool=True):
         """Function to restructure the ETFs. This function calls the internal
         synthetic ETF restructuring method to update weights within each of the
         synthetic ETF objects.
@@ -213,7 +217,12 @@ class Backtest():
         Keyword Arguments:
             update_positions {bool} -- Flag to update positions in Zipline
                                        (default: {True}).
+            log_commissions {bool} -- Flag to log commissions (default: {True}).
         """
+
+        # Getting old synthetic ETF prices (for logging)
+        old_etf_prices = np.array([context.synthetics[i].getCurrentPrice(
+            zipline_data) for i in config.sector_universe.getSectorLabels()])
 
         # Updating weights for each of the synthetic ETF components
         [context.synthetics[i].updateWeights(zipline_data=zipline_data)
@@ -222,6 +231,14 @@ class Backtest():
         # Update positions if requested
         if update_positions:
             Backtest.updatePositions(context=context)
+        
+        # Logging restructuring commissions
+        if log_commission:
+            context.books.restructureLog(
+                context=context,
+                zipline_data=zipline_data,
+                old_prices=old_etf_prices
+            )
 
     @staticmethod
     def updatePositions(context: TradingAlgorithm):
@@ -260,13 +277,15 @@ class Backtest():
                     format(ticker, port_ticker_weight * 100))
 
     @staticmethod
-    def validateSectorUniverse(candidate_sector_universe: Universe, data):
+    def validateSectorUniverse(candidate_sector_universe: Universe,
+        zipline_data: BarData):
         """Function to validate a candidate sector universe. Ensures that
         Zipline can look up all tickers.
         
         Arguments:
             candidate_sector_universe {Universe} -- Candidate sector universe.
-        
+            zipline_data {BarData} -- Instance zipline data bundle.        
+
         Raises:
             SymbolNotFound -- Raised when a symbol is not found.
         """
@@ -274,7 +293,7 @@ class Backtest():
         for ticker in candidate_sector_universe.getUniqueTickers():
             try:
                 symbol(ticker)
-                if not data.can_trade(symbol(ticker)):
+                if not zipline_data.can_trade(symbol(ticker)):
                     raise NoDataForSid
             except (SymbolNotFound, NoDataForSid):
                 # Updating invalid ticker in the universe
