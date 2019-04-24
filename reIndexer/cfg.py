@@ -11,6 +11,11 @@ class config:
     # Backtest frequency configuration
     backtest_frequency = 'daily'  # Must be either 'daily' or 'minute'
 
+    # Commission configuration
+    etf_commission = 0.01  # Percent (decimal) of value of component trade
+    relative_trade_commission = 0.01  # Percent (decimal) of value of ETF trade
+    trade_commission = 0.005  # Commission (in dollars) per dollar of trading
+
     # Portfolio configuration
     capital_base = 1e10
     optim_tol = 1e-6  # Optimization tolerance
@@ -29,12 +34,14 @@ class config:
     #       or the wildcard character, '*' for any day in the supplied week.
 
     # Synthetic ETF restructuring trigger
+    # Current config: Restructure on the third Friday of the month
     setf_restructure_trigger = {
         'day': 'Friday',
         'week': 3
     }
 
     # Portfolio of ETFs rebalancing trigger
+    # Current config: Rebalance on first day of first week of the month
     rebalance_trigger = {
         'day': '*',
         'week': 1

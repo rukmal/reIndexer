@@ -15,7 +15,7 @@ class Bookkeeping():
         pass
     
     def restructureLog(self, context: TradingAlgorithm, zipline_data: BarData,
-        old_prices: np.array):
+        old_prices: np.array, new_prices: np.array):
         """Function to log ETF data during a restructuring process. Records
         individual ETF prices, commisions paid on the trades to restructure
         the ETFs, and total restructuring commission for the portfolio.
@@ -24,10 +24,8 @@ class Bookkeeping():
             context {TradingAlgorithm} -- Zipline context namespace variable.
             zipline_data {BarData} -- Instance zipline data bundle.
             old_prices {np.array} -- Old ETF prices (for delta computation).
+            new_prices {np.array} -- New ETF prices.
         """
-
-        # Getting new ETF prices
-        new_prices = self.__getNewETFPrices(context, zipline_data)
 
         # Computing total delta
         etf_deltas = new_prices - old_prices
@@ -60,18 +58,3 @@ class Bookkeeping():
     def rebalanceLog(self, context: TradingAlgorithm,
         zipline_data: BarData):
         pass
-
-    def __getNewETFPrices(self, context: TradingAlgorithm,
-        zipline_data: BarData) -> np.array:
-        """Get new ETF prices.
-        
-        Arguments:
-            context {TradingAlgorithm} -- Zipline context namespace variable.
-            zipline_data {BarData} -- Instance zipline data bundle.
-        
-        Returns:
-            np.array -- New ETF prices.
-        """
-
-        return np.array([context.synthetics[i].getCurrentPrice(zipline_data)
-            for i in config.sector_universe.getSectorLabels()])

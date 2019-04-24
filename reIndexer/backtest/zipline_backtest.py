@@ -7,10 +7,12 @@ from ..synthetic_etf import PriceWeightedETF
 
 from zipline import run_algorithm
 from zipline.algorithm import TradingAlgorithm
-from zipline.api import order_target_percent, record, set_long_only, symbol
+from zipline.api import order_target_percent, record, set_commission,\
+    set_long_only, symbol
 from zipline.data.bar_reader import NoDataForSid
-from zipline.finance.execution import MarketOrder
 from zipline.errors import SymbolNotFound
+from zipline.finance.commission import PerDollar
+from zipline.finance.execution import MarketOrder
 from zipline.protocol import BarData
 import logging
 import numpy as np
@@ -61,6 +63,9 @@ class Backtest():
         # Enforcing long trades only
         set_long_only()
 
+        # Setting the per-trade commission from config
+        set_commission(PerDollar(cost=config.trade_commission))
+
         # Initializing utilities module
         context.util = Utilities()
 
@@ -108,6 +113,10 @@ class Backtest():
 
             # Updating initial flags for rebalancing/restructuring trigger
             context.util.setInitialFlags()
+
+            # Updating initial portfolio and etf restr. prices for commissions
+            context.old_restr_prices = context.old_port_prices = Backtest\
+                .getETFPrices(context=context, zipline_data=data)
 
             # Skip rest of logic for first iteration
             return
@@ -220,10 +229,6 @@ class Backtest():
             log_commissions {bool} -- Flag to log commissions (default: {True}).
         """
 
-        # Getting old synthetic ETF prices (for logging)
-        old_etf_prices = np.array([context.synthetics[i].getCurrentPrice(
-            zipline_data) for i in config.sector_universe.getSectorLabels()])
-
         # Updating weights for each of the synthetic ETF components
         [context.synthetics[i].updateWeights(zipline_data=zipline_data)
             for i in config.sector_universe.getSectorLabels()]
@@ -232,13 +237,17 @@ class Backtest():
         if update_positions:
             Backtest.updatePositions(context=context)
         
-        # Logging restructuring commissions
+        # Logging restructuring commissions, updating old restructure prices
         if log_commission:
+            new_etf_prices = Backtest.getETFPrices(context, zipline_data)
             context.books.restructureLog(
                 context=context,
                 zipline_data=zipline_data,
-                old_prices=old_etf_prices
+                old_prices=context.old_restr_prices,
+                new_prices=new_etf_prices
             )
+            # Update restructure prices for next iteration
+            context.old_restr_prices = new_etf_prices
 
     @staticmethod
     def updatePositions(context: TradingAlgorithm):
@@ -275,6 +284,22 @@ class Backtest():
                 )
                 logging.debug('Updated portfolio ticker {0} weight to {1}%'.
                     format(ticker, port_ticker_weight * 100))
+
+    @staticmethod
+    def getETFPrices(context: TradingAlgorithm, zipline_data: BarData)\
+        -> np.array:
+        """Function to get ETF prices.
+        
+        Arguments:
+            context {TradingAlgorithm} -- Zipline context namespace variable.
+            zipline_data {BarData} -- Instance zipline data bundle.
+        
+        Returns:
+            np.array -- New ETF prices.
+        """
+
+        return np.array([context.synthetics[i].getCurrentPrice(zipline_data)
+            for i in config.sector_universe.getSectorLabels()])
 
     @staticmethod
     def validateSectorUniverse(candidate_sector_universe: Universe,
