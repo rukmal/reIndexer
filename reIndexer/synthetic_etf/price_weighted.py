@@ -36,6 +36,9 @@ class PriceWeightedETF():
         # Updating ETF parameters on init
         self.updateParameters(zipline_data=zipline_data)
 
+        # Compute allocation weights on initialization
+        self.getWeights(zipline_data=zipline_data)
+
     def getWeights(self, zipline_data: BarData) -> np.array:
         """Get the current weights of the component assets; this recomputes the
         price-weighted allocation as of the date of the current `zipline_data`.
@@ -56,8 +59,11 @@ class PriceWeightedETF():
         # Computing current sum
         current_sum = np.sum(current_asset_prices)
 
+        # Binding allocation weights
+        self.alloc_weights = current_asset_prices / current_sum
+
         # Return new weights
-        return current_asset_prices / current_sum
+        return self.alloc_weights
     
     def getPeriodLogReturn(self) -> float:
         """Get the single-period log return of the ETF.
@@ -93,12 +99,32 @@ class PriceWeightedETF():
             float -- Variance of the ETF.
         """
 
-        return self.variance
+        return self.variance 
+    
+    def getCurrentPrice(self, zipline_data: BarData) -> float:
+        """Compute and return the current asset price (using stored
+        component asset allocation weights)/
+        
+        Arguments:
+            zipline_data {BarData} -- Instance zipline data bundle.
+        
+        Returns:
+            float -- Synthetic ETF price at the current time step.
+        """
+
+        # Getting current component asset prices
+        current_asset_prices = np.array(zipline_data.current(
+            symbols(*self.tickers),
+            'price'
+        ))
+
+        # Comuting current price (dot product b/w current prices and alloc)
+        return np.dot(current_asset_prices, self.alloc_weights)
 
     def updateParameters(self, zipline_data: BarData):
         """Update ETF parameters; specifically, the asset allocations weights,
-        the log return (over the configuration lookback window),
-        and the variance.
+        the log return (over the configuration lookback window), the variance,
+        and the synthetic ETF prices over the lookback window.
         
         Arguments:
             zipline_data {BarData} -- Instance zipline data bundle.
@@ -119,15 +145,14 @@ class PriceWeightedETF():
         # Computing prices, restructuring per the period in the configuration
         counter = 0
         setf_prices = np.array([])
-        for idx, row in historical_data.iterrows():
-            # Need to check if each ticker is tradable here, and add/remove as required
+        for _, row in historical_data.iterrows():
             if ((counter % config.setf_restructure_window) == 0):
                 # Recompute allocation weights
                 alloc_weights = np.array(row / row.sum())
             # Computing synthetic ETF price
             setf_price = np.dot(alloc_weights, row.values)
             # Appending to prices array
-            setf_prices = np.append(setf_prices, [setf_price])
+            setf_prices = np.append(setf_prices, setf_price)
             counter += 1
 
         if (np.count_nonzero(np.isnan(setf_prices)) > 0):
@@ -145,3 +170,7 @@ class PriceWeightedETF():
 
         # Computing ETF variance
         self.variance = np.var(self.log_rets)
+
+        # Casting synthetic ETF prices to DataFrame with original index, binding
+        self.setf_prices = pd.DataFrame(setf_prices,
+                                        index=historical_data.index)
