@@ -40,13 +40,10 @@ class Bookkeeping():
         log_dict = dict()
 
         # Building labels for dictionary
-        etf_price_labels = ['_'.join(['etf', i])
-            for i in config.sector_universe.getSectorLabels()]
         etf_commission_labels = ['_'.join(['etf_commission', i])
             for i in config.sector_universe.getSectorLabels()]
 
         # Adding to dictionary
-        log_dict.update(zip(etf_price_labels, new_prices))
         log_dict.update(zip(etf_commission_labels, etf_commission))
         
         # Total commission
@@ -55,6 +52,53 @@ class Bookkeeping():
         # Adding to zipline record
         record(**log_dict)
 
-    def rebalanceLog(self, context: TradingAlgorithm,
-        zipline_data: BarData):
-        pass
+    def rebalanceLog(self, old_prices: np.array, old_weights: np.array,
+        new_prices: np.array, new_weights: np.array):
+        """Function to log portfolio commission data during a rebalance event.
+        
+        Arguments:
+            old_prices {np.array} -- Old ETF prices (last rebalance).
+            old_weights {np.array} -- Old ETF weights (last rebalance).
+            new_prices {np.array} -- New ETF prices (current rebalance).
+            new_weights {np.array} -- New ETF weights (current rebalance).
+        """
+        
+        # Computing old weighted price
+        old_weighted_price = np.dot(old_prices, old_weights)
+
+        # Computing new weighted price
+        new_weighted_price = np.dot(new_prices, new_weights)
+
+        # Computing total absolute delta
+        abs_delta = np.abs(old_weighted_price - new_weighted_price)
+
+        # Computing commission
+        rebal_commission = abs_delta * config.relative_trade_commission
+
+        # Adding to zipline record
+        record(portfolio_rebalance_commission=rebal_commission)
+
+    def etfDataLog(self, etf_prices: np.array, etf_weights: np.array):
+        """Function to log ETF data, specifically ETF prices and corresponding
+        portfolio weights.
+        
+        Arguments:
+            etf_prices {np.array} -- ETF prices.
+            etf_weights {np.array} -- Portfolio ETF weights.
+        """
+
+        # Building log object
+        log_dict = dict()
+
+        # Building labels for dictionary
+        etf_price_labels = ['_'.join(['etf', i])
+            for i in config.sector_universe.getSectorLabels()]
+        port_weights_label = ['_'.join(['etf_weight', i])
+            for i in config.sector_universe.getSectorLabels()]
+
+        # Adding to dictionary
+        log_dict.update(zip(etf_price_labels, etf_prices))
+        log_dict.update(zip(port_weights_label, etf_weights))
+
+        # Adding to zipline record
+        record(**log_dict)
