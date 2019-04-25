@@ -6,14 +6,44 @@ from zipline.protocol import BarData
 import numpy as np
 
 
+# NOTE: NEED TO FIX TURNOVER COMPUTATION; USE WEIGHTS DELTA WITH LATEST PRICE, 
+# BECAUSE WE DON'T NEED TO PAY COMMISSIONS ON CAPITAL GAINS
+
 class Bookkeeping():
     """Bookkeeping module to handle logging for individual ETF prices,
     commissions, and other necessary data.
     """
 
     def __init__(self):
-        pass
-    
+        # Label lists (i.e. log column titles)
+        # ETF restructuring turnover
+        self.etf_restr_turnover_labels = ['_'.join(['etf_restr_turnover', i])
+            for i in config.sector_universe.getSectorLabels()]
+        # Total restructuring turnover
+        self.total_etf_restr_turnover_label = ['total_etf_restr_turnover']
+        # Portfolio rebalancing commission
+        self.port_rebal_turnover_labels = ['_'.join(['port_rebal_turnover', i])
+            for i in config.sector_universe.getSectorLabels()]
+        # Total portfolio turnover
+        self.total_port_rebal_turnover_label = ['total_port_rebal_turnover']
+
+        # Zero value tickers
+        # NOTE: Because of a 'feature' of zipline's `record` function, all
+        #       values are forward-filled. For things like commissions, this
+        #       needs to be suppressed. The following list is set to 0 at the
+        #       beginning of each iteration
+        self.clean_labels = self.etf_restr_turnover_labels + \
+                            self.total_etf_restr_turnover_label + \
+                            self.port_rebal_turnover_labels + \
+                            self.total_port_rebal_turnover_label
+        # Dictionary of zero-ed key-value paris
+        self.clean_dict = dict(zip(self.clean_labels,
+                                   [0] * len(self.clean_labels)))
+
+
+    def cleanLog(self):
+        record(**self.clean_dict)
+
     def restructureLog(self, context: TradingAlgorithm, zipline_data: BarData,
         old_prices: np.array, new_prices: np.array):
         """Function to log ETF data during a restructuring process. Records
@@ -39,15 +69,11 @@ class Bookkeeping():
         # Building log object
         log_dict = dict()
 
-        # Building labels for dictionary
-        etf_commission_labels = ['_'.join(['etf_commission', i])
-            for i in config.sector_universe.getSectorLabels()]
-
         # Adding to dictionary
-        log_dict.update(zip(etf_commission_labels, etf_commission))
+        log_dict.update(zip(self.etf_restr_turnover_labels, etf_commission))
         
         # Total commission
-        log_dict['etf_commission'] = commission
+        log_dict[self.total_etf_restr_turnover_label[0]] = commission
 
         # Adding to zipline record
         record(**log_dict)
@@ -69,6 +95,9 @@ class Bookkeeping():
         # Computing new weighted price
         new_weighted_price = np.dot(new_prices, new_weights)
 
+        # Computing weights delta
+        weights_delta = np.abs(new_weights - old_weights)
+
         # Computing total absolute delta
         abs_delta = np.abs(old_weighted_price - new_weighted_price)
 
@@ -76,7 +105,7 @@ class Bookkeeping():
         rebal_commission = abs_delta * config.relative_trade_commission
 
         # Adding to zipline record
-        record(portfolio_rebalance_commission=rebal_commission)
+        record(**{self.total_port_rebal_turnover_label[0]:rebal_commission})
 
     def etfDataLog(self, etf_prices: np.array, etf_weights: np.array):
         """Function to log ETF data, specifically ETF prices and corresponding
