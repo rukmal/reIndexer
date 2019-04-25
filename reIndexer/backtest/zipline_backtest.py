@@ -57,7 +57,6 @@ class Backtest():
         # Zipline context namespace variables
         context.first_run = True  # First run flag
         context.synthetics = dict()  # Dictionary to store synthetic ETF objects
-        context.counter = 0  # Counter
         context.port = MinimumVariance()  # Initializing portfolio
 
         # Enforcing long trades only
@@ -244,7 +243,7 @@ class Backtest():
         synthetic ETF objects.
 
         This function also handles logging, and provides the option to make
-        trades to make trades updating asset positions in zipline.
+        trades updating asset positions in zipline.
         
         Arguments:
             context {TradingAlgorithm} -- Zipline context namespace variable.

@@ -178,7 +178,6 @@ class PriceWeightedETF():
         historical_data = historical_data.fillna(method='ffill')
 
         # Computing prices, restructuring per the period in the configuration
-        counter = 0
         setf_prices = np.array([])
         first_run = True  # Flag for first run
         for idx, row in historical_data.iterrows():
@@ -192,16 +191,12 @@ class PriceWeightedETF():
             setf_price = np.dot(alloc_weights, row.values)
             # Appending to prices array
             setf_prices = np.append(setf_prices, setf_price)
-            counter += 1
 
         if (np.count_nonzero(np.isnan(setf_prices)) > 0):
             logging.error('NA values detected in Synthetic ETF prices')
             raise Exception
 
         # Computing ETF log returns
-        # NOTE: Simply using asset price total as this is price-weighted
-        # NOTE: Indexing from 1 to end to drop 'nan' value in first position;
-        #       this is an artifact of the `pct_change()` function
         self.log_rets = np.diff(np.log(setf_prices))
 
         # Computing single-period ETF log return (sum of log returns)
