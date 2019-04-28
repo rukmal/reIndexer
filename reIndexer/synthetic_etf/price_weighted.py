@@ -70,6 +70,17 @@ class PriceWeightedETF():
         # Return new weights
         return self.alloc_weights
     
+    def getComponentAllocation(self) -> np.array:
+        """Get the current component allocation weights. Note that the order
+        of the weights in the returned array correspond to that of the
+        result of `getTickerList()`.
+        
+        Returns:
+            np.array -- ETF component allocation weights.
+        """
+
+        return self.alloc_weights
+
     def getPeriodLogReturn(self) -> float:
         """Get the single-period log return of the ETF.
         
@@ -106,12 +117,19 @@ class PriceWeightedETF():
 
         return self.variance 
     
-    def getCurrentPrice(self, zipline_data: BarData) -> float:
+    def getCurrentPrice(self, zipline_data: BarData,
+        alloc_weights: np.array=None) -> float:
         """Compute and return the current asset price (using stored
-        component asset allocation weights)/
+        component asset allocation weights) or supplied override allocation
+        weights.
         
         Arguments:
             zipline_data {BarData} -- Instance zipline data bundle.
+        
+        Keyword Arguments:
+            alloc_weights {np.array} -- Alternate allocation weights to be used
+                                        instead of stored allocation weights
+                                        (default: {None}).
         
         Returns:
             float -- Synthetic ETF price at the current time step.
@@ -123,8 +141,11 @@ class PriceWeightedETF():
             'price'
         ))
 
+        if alloc_weights is None:
+            alloc_weights = self.alloc_weights
+
         # Comuting current price (dot product b/w current prices and alloc)
-        return np.dot(current_asset_prices, self.alloc_weights)
+        return np.dot(current_asset_prices, alloc_weights)
 
     def getTickerList(self) -> list:
         """Get the list of tickers (in order; corresponds to asset weights and
