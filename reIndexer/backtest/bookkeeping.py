@@ -6,9 +6,6 @@ from zipline.protocol import BarData
 import numpy as np
 
 
-# NOTE: NEED TO FIX TURNOVER COMPUTATION; USE WEIGHTS DELTA WITH LATEST PRICE, 
-# BECAUSE WE DON'T NEED TO PAY COMMISSIONS ON CAPITAL GAINS
-
 class Bookkeeping():
     """Bookkeeping module to handle logging for individual ETF prices,
     commissions, and other necessary data.
@@ -40,72 +37,82 @@ class Bookkeeping():
         self.clean_dict = dict(zip(self.clean_labels,
                                    [0] * len(self.clean_labels)))
 
-
     def cleanLog(self):
         record(**self.clean_dict)
 
     def restructureLog(self, context: TradingAlgorithm, zipline_data: BarData,
-        old_prices: np.array, new_prices: np.array):
+        old_weights: np.array, new_weights: np.array):
         """Function to log ETF data during a restructuring process. Records
-        individual ETF prices, commisions paid on the trades to restructure
-        the ETFs, and total restructuring commission for the portfolio.
+        dollar value turnover (i.e. the trades) to restructure
+        the ETFs, and total restructuring turnover for the portfolio.
         
         Arguments:
             context {TradingAlgorithm} -- Zipline context namespace variable.
             zipline_data {BarData} -- Instance zipline data bundle.
-            old_prices {np.array} -- Old ETF prices (for delta computation).
-            new_prices {np.array} -- New ETF prices.
+            old_weights {np.array} -- Old ETF asset allocation weights.
+            new_weights {np.array} -- New ETF asset allocation weights.
         """
+        
+        # Computing absolute weight delta
+        abs_weights_delta = np.abs(new_weights - old_weights)
 
-        # Computing total delta
-        etf_deltas = new_prices - old_prices
-        
-        # Computing per-ETF commissions
-        etf_commission = np.abs(etf_deltas) * config.etf_commission
-        
-        # Computing commission
-        commission = np.sum(etf_commission)
+        # Computing dollar value change, using current asset prices
+        etf_restr_turnover = [context.synthetics[i].getCurrentPrice(
+                zipline_data=zipline_data,
+                alloc_weights=abs_weights_delta[idx])
+            for idx, i in enumerate(config.sector_universe.getSectorLabels())]
+
+        # Computing total ETF restructure turnover
+        etf_restr_total_turnover = np.sum(etf_restr_turnover)
 
         # Building log object
         log_dict = dict()
 
         # Adding to dictionary
-        log_dict.update(zip(self.etf_restr_turnover_labels, etf_commission))
+        log_dict.update(zip(self.etf_restr_turnover_labels, etf_restr_turnover))
         
-        # Total commission
-        log_dict[self.total_etf_restr_turnover_label[0]] = commission
+        # Total turnover
+        log_dict[self.total_etf_restr_turnover_label[0]] = \
+            etf_restr_total_turnover
 
         # Adding to zipline record
         record(**log_dict)
 
-    def rebalanceLog(self, old_prices: np.array, old_weights: np.array,
-        new_prices: np.array, new_weights: np.array):
-        """Function to log portfolio commission data during a rebalance event.
+    def rebalanceLog(self, old_weights: np.array, new_weights: np.array,
+        new_prices: np.array):
+        """Function to log portfolio data during a rebalancing process. Records
+        dollar value turnover (i.e. the trades) to rebalance
+        the portfolio, and total rebalancing turnover for the portfolio.
         
         Arguments:
-            old_prices {np.array} -- Old ETF prices (last rebalance).
             old_weights {np.array} -- Old ETF weights (last rebalance).
-            new_prices {np.array} -- New ETF prices (current rebalance).
             new_weights {np.array} -- New ETF weights (current rebalance).
+            new_prices {np.array} -- New ETF prices (current rebalance).
         """
-        
-        # Computing old weighted price
-        old_weighted_price = np.dot(old_prices, old_weights)
 
-        # Computing new weighted price
-        new_weighted_price = np.dot(new_prices, new_weights)
+        # Computing absolute weights delta
+        abs_weights_delta = np.abs(new_weights - old_weights)
 
-        # Computing weights delta
-        weights_delta = np.abs(new_weights - old_weights)
+        # Computing portfolio turnover (dollar value) for each of the ETFs,
+        # using current asset prices
+        port_rebal_turnover = np.multiply(abs_weights_delta, new_prices)
 
-        # Computing total absolute delta
-        abs_delta = np.abs(old_weighted_price - new_weighted_price)
+        # Computing total turnover
+        port_rebal_total_turnover = np.sum(port_rebal_turnover)
 
-        # Computing commission
-        rebal_commission = abs_delta * config.relative_trade_commission
+        # Building log object
+        log_dict = dict()
+
+        # Adding to dictionary
+        log_dict.update(zip(self.port_rebal_turnover_labels,
+                            port_rebal_turnover))
+
+        # Total turnover
+        log_dict[self.total_port_rebal_turnover_label[0]] = \
+            port_rebal_total_turnover
 
         # Adding to zipline record
-        record(**{self.total_port_rebal_turnover_label[0]:rebal_commission})
+        record(**log_dict)
 
     def etfDataLog(self, etf_prices: np.array, etf_weights: np.array):
         """Function to log ETF data, specifically ETF prices and corresponding
