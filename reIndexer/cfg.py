@@ -5,15 +5,13 @@ import pandas as pd
 class config:
     # Backtest time window
     tz_local = 'US/Eastern'
-    backtest_start = pd.to_datetime('2015-01-01').tz_localize(tz_local)
-    backtest_end = pd.to_datetime('2018-03-01').tz_localize(tz_local)
+    backtest_start = pd.to_datetime('2012-01-01').tz_localize(tz_local)
+    backtest_end = pd.to_datetime('2017-12-31').tz_localize(tz_local)
 
     # Backtest frequency configuration
     backtest_frequency = 'daily'  # Must be either 'daily' or 'minute'
 
     # Commission configuration
-    etf_commission = 0.01  # Percent (decimal) of value of component trade
-    relative_trade_commission = 0.01  # Percent (decimal) of value of ETF trade
     trade_commission = 0.005  # Commission (in dollars) per dollar of trading
 
     # Portfolio configuration
@@ -23,7 +21,7 @@ class config:
     # Sector universe (set at backtest initialization)
     sector_universe = None
 
-    # Synthetic ETF`
+    # Synthetic ETF
     setf_lookback_window = 252  # days (1 work year)
     setf_data_frequency = '1d'  # '1m' or '1d' for minute/daily respectively
 

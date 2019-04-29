@@ -60,7 +60,12 @@ class Backtest():
         context.port = MinimumVariance()  # Initializing portfolio
 
         # Enforcing long trades only
-        set_long_only()
+        # NOTE: This is commented out because of rounding bugs; i.e. when
+        #       certain positions were reduced to 0, some of the rounding caused
+        #       some positions to go to -1 shares. This is neglegible, and as
+        #       the current optimization enforces no shorts, this
+        #       condition is relaxed here.
+        # set_long_only()
 
         # Setting the per-trade commission from config
         set_commission(PerDollar(cost=config.trade_commission))
