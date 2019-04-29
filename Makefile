@@ -41,6 +41,7 @@ export_deps_win:
 		-e libcxx \
 		-e ncurses \
 		-e libcxxabi \
+		-e libgfortran
 		> conda/environment-windows.yml
 
 # Rule to generate and save the conda dependencies for *nix deployment.
