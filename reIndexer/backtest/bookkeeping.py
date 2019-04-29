@@ -38,6 +38,21 @@ class Bookkeeping():
                                    [0] * len(self.clean_labels)))
 
     def cleanLog(self):
+        """Function to reset commission 'record' fields to 0.
+        
+        This function is meant to be called at the beginning of each
+        `handle_data` zipline call, and is designed to mitigate the
+        forward-propagation behavior of zipline's `record(...)` function.
+        `self.clean_dict` (defined in the) initialization method is a dictionary
+        of each of the commission-record labels (as keys), and values as 0.
+
+        If a portfolio rebalance or ETF restructure operation is called during
+        the control flow of a single `handle_data` call, these 0 values will
+        automatically be overwritten by the actual commissions, as `record(...)`
+        will be called again with the relevant commission data later in the
+        control flow.
+        """
+
         record(**self.clean_dict)
 
     def restructureLog(self, context: TradingAlgorithm, zipline_data: BarData,

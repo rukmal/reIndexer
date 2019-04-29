@@ -89,6 +89,10 @@ class Backtest():
             data {BarData} -- Instance zipline data bundle.
         """
 
+        # Reset log (to handle Zipline's forward-propagation behavior of the
+        # `record(...)` function)
+        context.books.cleanLog()
+
         # First run operations
         if (context.first_run):
             # Validate sector universe
