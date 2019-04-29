@@ -20,11 +20,23 @@ pickle_out_folder = 'sector_universes/learned_sectors/pickle/'
 # Output folder for excel backtest result files
 excel_out_folder = 'sector_universes/learned_sectors/excel/'
 
+# Override list of completed universes (for resolution on crash)
+completed_universes = [f.split('.')[0] for f in os.listdir(excel_out_folder)
+    if f.endswith('.xlsx')]
 
 def backtestAll():
     candidate_files = [f for f in os.listdir(sector_folder)
         if f.endswith('.csv')]
     print('Found {0} candidate sector files'.format(len(candidate_files)))
+
+    print('Removing {0} previously completed universes'.format(
+        len(completed_universes)))
+    
+    candidate_files = [f for f in candidate_files
+        if f.split('.')[0] not in completed_universes]
+    
+    print('Running backtest on {0} candidate sector files'.format(
+        len(candidate_files)))
 
     counter = 0
 
