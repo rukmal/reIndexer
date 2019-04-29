@@ -111,10 +111,6 @@ class Backtest():
             # Updating initial flags for rebalancing/restructuring trigger
             context.util.setInitialFlags()
 
-            # Updating initial portfolio and etf restr. prices for commissions
-            context.old_restr_prices = context.old_port_prices = Backtest\
-                .getETFPrices(context=context, zipline_data=data)
-
             # Logging ETF prices
             context.books.etfDataLog(
                 etf_prices=Backtest.getETFPrices(context, data),
@@ -224,13 +220,10 @@ class Backtest():
         if log_commission:
             new_etf_prices = Backtest.getETFPrices(context, zipline_data)
             context.books.rebalanceLog(
-                old_prices=context.old_port_prices,
                 old_weights=old_weights,
-                new_prices=new_etf_prices,
-                new_weights=context.port_w
+                new_weights=context.port_w,
+                new_prices=new_etf_prices
             )
-            # Update rebalance prices for next iteration
-            context.old_port_prices = new_etf_prices
 
         # Return positions
         return context.port_w
@@ -255,6 +248,11 @@ class Backtest():
             log_commissions {bool} -- Flag to log commissions (default: {True}).
         """
 
+        if log_commission:
+            old_weights = np.array([context.synthetics[i]\
+                .getComponentAllocation()
+                for i in config.sector_universe.getSectorLabels()])
+
         # Updating weights for each of the synthetic ETF components
         [context.synthetics[i].updateWeights(zipline_data=zipline_data)
             for i in config.sector_universe.getSectorLabels()]
@@ -265,15 +263,15 @@ class Backtest():
         
         # Logging restructuring commissions, updating old restructure prices
         if log_commission:
-            new_etf_prices = Backtest.getETFPrices(context, zipline_data)
+            new_weights = np.array([context.synthetics[i]\
+                .getComponentAllocation()
+                for i in config.sector_universe.getSectorLabels()])
             context.books.restructureLog(
                 context=context,
                 zipline_data=zipline_data,
-                old_prices=context.old_restr_prices,
-                new_prices=new_etf_prices
+                old_weights=old_weights,
+                new_weights=new_weights
             )
-            # Update restructure prices for next iteration
-            context.old_restr_prices = new_etf_prices
 
     @staticmethod
     def updatePositions(context: TradingAlgorithm):
