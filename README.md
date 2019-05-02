@@ -37,6 +37,13 @@ TODO: Add notes on how to download data bundles here
 - That's it!
 
 
+## reIndexer Workflow Diagram
+
+<p align="center">
+    <img src="bin/workflow_diagram.png" />
+</p>
+
+
 ## Sector Universe Files
 
 The `Universe` submodule requires that sector universe files are in the following format (as a CSV file):
