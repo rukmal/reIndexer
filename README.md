@@ -1,4 +1,6 @@
-<div style="text-align:center"><img src="bin/reIndexer_logo.png" /></div>
+<p align="center">
+    <img src="bin/reIndexer_logo.png" />
+</p>
 
 <div style="text-align:center">
 <b>reIndexer is a research tool for backtest-driven evaluation of different sectorization universes, using a system of synthetic ETFs, and efficient portfolios of those ETFs.</b>
